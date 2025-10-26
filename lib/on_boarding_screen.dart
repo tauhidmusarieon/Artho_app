@@ -1,13 +1,14 @@
+import 'package:artho_app/screens/signup_login/login_page.dart';
 import 'package:flutter/material.dart';
 
-class OnboardingScreen extends StatelessWidget {
-  const OnboardingScreen({Key? key}) : super(key: key);
+class on_boarding_screen extends StatelessWidget {
+  const on_boarding_screen({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       // 1. Background Color
-      backgroundColor: const Color(0xFFFEF9E7), // A light cream/yellow color
+      backgroundColor: const Color.fromRGBO(249, 239, 194, 1), // A light cream/yellow color
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(24.0),
@@ -17,19 +18,19 @@ class OnboardingScreen extends StatelessWidget {
               Expanded(
                 child: Center(
                   child: Image.asset(
-                    'assets/images/logo_demo1.png', // Your custom graphic
-                    height: 300, // Adjust the size as needed
+                    'assets/images/artho_logo.png', 
+                    height: 500, 
                     errorBuilder: (context, error, stackTrace) {
                       return Container(
                         height: 300,
                         width: 300,
                         decoration: BoxDecoration(
                           color: Colors.grey[200],
-                          shape: BoxShape.circle,
+                          shape: BoxShape.rectangle,
                         ),
                         child: Center(
                           child: Text(
-                            'Your graphic here\n(assets/images/logo_demo1.png)',
+                            '(assets/images/artho_logo.png)',
                             style: TextStyle(color: Colors.grey[600]),
                             textAlign: TextAlign.center,
                           ),
@@ -40,7 +41,10 @@ class OnboardingScreen extends StatelessWidget {
                 ),
               ),
 
+              Text("ARTHO",style: TextStyle(fontSize: 20,fontWeight: FontWeight.bold, color: Colors.black87),),
+
               const SizedBox(height: 20),
+              
 
               // 3. White Card Area
               Container(
@@ -50,7 +54,7 @@ class OnboardingScreen extends StatelessWidget {
                   borderRadius: BorderRadius.circular(30.0),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
+                      color: Colors.black.withValues(alpha: 0.5),
                       blurRadius: 10,
                       offset: const Offset(0, 4),
                     ),
@@ -74,7 +78,7 @@ class OnboardingScreen extends StatelessWidget {
 
                     // Body Text
                     Text(
-                      'Expense Tracker is a simple and efficient personal finance management app that allows you to track your daily expenses and income.',
+                      'Artho is a simple and efficient personal finance management app that allows you to track your daily expenses and income.',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: 16,
@@ -90,9 +94,13 @@ class OnboardingScreen extends StatelessWidget {
                       width: double.infinity,
                       child: ElevatedButton(
                         onPressed: () {
-                          // TODO: Add navigation to your app's home screen
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (context) => const LoginPage()),
+                          );
                           debugPrint('Get Started Tapped!');
                         },
+
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFFE96B56),
                           padding: const EdgeInsets.symmetric(vertical: 18),

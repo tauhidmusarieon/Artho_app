@@ -1,4 +1,4 @@
-import 'package:artho_app/OnboardingScreen.dart';
+import 'package:artho_app/on_boarding_screen.dart';
 import 'package:flutter/material.dart';
 
 void main() {
@@ -10,7 +10,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Expense Tracker',
-      home: OnboardingScreen(),
+      home: on_boarding_screen(),
       debugShowCheckedModeBanner: false,
     );
   }
