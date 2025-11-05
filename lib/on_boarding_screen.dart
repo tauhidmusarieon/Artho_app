@@ -8,7 +8,7 @@ class on_boarding_screen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       // 1. Background Color
-      backgroundColor: const Color.fromRGBO(249, 239, 194, 1), // A light cream/yellow color
+      backgroundColor: const Color.fromRGBO(249, 239, 194, 1), 
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(24.0),

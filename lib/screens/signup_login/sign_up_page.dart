@@ -15,16 +15,29 @@ class _SignUpPageState extends State<SignUpPage> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isLoading = false;
+  bool _isPasswordObscured = true;
+
+  @override
+  void dispose() {
+    _usernameController.dispose();
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
 
   Future<void> _signUpUser() async {
+    if (!mounted) return;
     setState(() => _isLoading = true);
+
     try {
+      // 1. Create user in Firebase Auth
       final credential = await FirebaseAuth.instance
           .createUserWithEmailAndPassword(
             email: _emailController.text.trim(),
             password: _passwordController.text.trim(),
           );
 
+      // 2. Save user data to Firestore
       await FirebaseFirestore.instance
           .collection('users')
           .doc(credential.user!.uid)
@@ -32,29 +45,43 @@ class _SignUpPageState extends State<SignUpPage> {
             'username': _usernameController.text.trim(),
             'email': _emailController.text.trim(),
             'createdAt': FieldValue.serverTimestamp(),
+            'uid': credential.user!.uid,
           });
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Account created successfully!')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Account created successfully! Please login.'),
+          ),
+        );
 
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const LoginPage()),
-      );
+        // Wait a bit before navigating (so user can see the message)
+        await Future.delayed(const Duration(seconds: 2));
+
+        // Go to login page
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const LoginPage()),
+        );
+      }
     } on FirebaseAuthException catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(e.message ?? 'Signup failed')));
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(e.message ?? 'Signup failed')));
+      }
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
+
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color.fromRGBO(255, 235, 238, 1),
+      backgroundColor: const Color.fromRGBO(249, 239, 194, 1),
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 60),
@@ -66,7 +93,7 @@ class _SignUpPageState extends State<SignUpPage> {
                 style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 5),
-              const Text("Connect with your friends today!"),
+              const Text("Connect with your wallet today!"),
               const SizedBox(height: 25),
               TextField(
                 controller: _usernameController,
@@ -79,6 +106,7 @@ class _SignUpPageState extends State<SignUpPage> {
               const SizedBox(height: 15),
               TextField(
                 controller: _emailController,
+                keyboardType: TextInputType.emailAddress,
                 decoration: const InputDecoration(
                   labelText: "Email",
                   hintText: "Enter Your Email",
@@ -88,12 +116,23 @@ class _SignUpPageState extends State<SignUpPage> {
               const SizedBox(height: 15),
               TextField(
                 controller: _passwordController,
-                obscureText: true,
-                decoration: const InputDecoration(
+                obscureText: _isPasswordObscured,
+                decoration: InputDecoration(
                   labelText: "Password",
                   hintText: "Enter Your Password",
-                  suffixIcon: Icon(Icons.visibility_off),
-                  border: OutlineInputBorder(),
+                  border: const OutlineInputBorder(),
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _isPasswordObscured
+                          ? Icons.visibility
+                          : Icons.visibility_off,
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        _isPasswordObscured = !_isPasswordObscured;
+                      });
+                    },
+                  ),
                 ),
               ),
               const SizedBox(height: 20),
