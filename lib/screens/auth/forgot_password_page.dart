@@ -34,6 +34,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
     setState(() => _isLoading = true);
 
     try {
+      //
       // We just try to send the email. Firebase will throw an error
       // if the user doesn't exist.
       await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
