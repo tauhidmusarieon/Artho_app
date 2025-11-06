@@ -128,12 +128,22 @@ class HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildBalanceCard(double balance) {
+Widget _buildBalanceCard(double balance) {
+    // Choose color based on balance value
+    Color cardColor;
+    if (balance < 0) {
+      cardColor = Colors.redAccent; // Negative balance
+    } else if (balance > 0) {
+      cardColor = const Color.fromARGB(255, 32, 192, 115); // Positive balance
+    } else {
+      cardColor = Colors.grey; // Zero balance (optional)
+    }
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.blueAccent,
+        color: cardColor,
         borderRadius: BorderRadius.circular(20),
       ),
       child: Column(
@@ -145,7 +155,7 @@ class HomeScreenState extends State<HomeScreen> {
           ),
           const SizedBox(height: 10),
           Text(
-            'BDT ${balance.toStringAsFixed(2)}', // Dynamic Balance
+            'BDT ${balance.toStringAsFixed(2)}',
             style: const TextStyle(
               color: Colors.white,
               fontSize: 32,
@@ -156,6 +166,7 @@ class HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
+
 
   Widget _buildIncomeExpenseSummary(double income, double expense) {
     return Row(
