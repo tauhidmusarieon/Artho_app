@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 class HomeScreen extends StatefulWidget {
-  // Key এখানে যোগ করা হয়েছে MainScreen থেকে কল করার জন্য
+  // Key added here to call from MainScreen
   const HomeScreen({super.key});
 
   @override
@@ -20,12 +20,12 @@ class HomeScreenState extends State<HomeScreen> {
   double _monthlyExpense = 0.0;
   List<TransactionModel> _recentTransactions = [];
   String _currentDate = '';
-  String _userName = 'User'; // ডিফল্ট নাম
+  String _userName = 'User'; // Default name
 
   @override
   void initState() {
     super.initState();
-    fetchDataAndUser(); // সব ডেটা লোড করা
+    fetchDataAndUser(); // Loading all data
     _setCurrentDate();
   }
 
@@ -33,17 +33,16 @@ class HomeScreenState extends State<HomeScreen> {
     _currentDate = DateFormat('EEEE dd MMMM').format(DateTime.now());
   }
 
-  // এই ফাংশনটি MainScreen থেকেও কল করা যাবে
   Future<void> fetchDataAndUser() async {
     setState(() => _isLoading = true);
     try {
-      // ইউজারের নাম লোড করা
+      // Loading user name 
       final userData = await _firestoreService.getUserData();
       if (userData != null && userData['username'] != null) {
         _userName = userData['username'];
       }
 
-      // সব ফিনান্সিয়াল ডেটা একসাথে লোড করা
+      // Loading all financial data together
       final balance = await _firestoreService.getAccountBalance();
       final incomeExpense = await _firestoreService.getMonthlyIncomeExpense();
       final transactions = await _firestoreService.getRecentTransactions();
@@ -86,7 +85,7 @@ class HomeScreenState extends State<HomeScreen> {
                   style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                 ),
                 Text(
-                  _userName, // <-- ডাইনামিক ইউজারনেম
+                  _userName, // Dynamic username
                   style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
@@ -109,7 +108,7 @@ class HomeScreenState extends State<HomeScreen> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(
-              onRefresh: fetchDataAndUser, // <-- নিচে টানলে রিফ্রেশ হবে
+              onRefresh: fetchDataAndUser, // on Refresh
               child: SingleChildScrollView(
                 padding: const EdgeInsets.all(16.0),
                 child: Column(
@@ -126,13 +125,8 @@ class HomeScreenState extends State<HomeScreen> {
                 ),
               ),
             ),
-      // --- BottomNavigationBar এবং FloatingActionButton এখান থেকে সরিয়ে ফেলা হয়েছে ---
-      // --- ওগুলো এখন MainScreen.dart-এ আছে ---
     );
   }
-
-  // --- নিচের _build... উইজেটগুলো অপরিবর্তিত ---
-  // (এগুলো আপনার ফাইলে যেমন ছিলো তেমনই থাকবে, কোনো পরিবর্তন দরকার নেই)
 
   Widget _buildBalanceCard(double balance) {
     return Container(
@@ -151,7 +145,7 @@ class HomeScreenState extends State<HomeScreen> {
           ),
           const SizedBox(height: 10),
           Text(
-            'BDT ${balance.toStringAsFixed(2)}', // ডাইনামিক ব্যালেন্স
+            'BDT ${balance.toStringAsFixed(2)}', // Dynamic Balance
             style: const TextStyle(
               color: Colors.white,
               fontSize: 32,
@@ -182,7 +176,7 @@ class HomeScreenState extends State<HomeScreen> {
                   ),
                   const SizedBox(height: 5),
                   Text(
-                    income.toStringAsFixed(0), // ডাইনামিক আয়
+                    income.toStringAsFixed(0), // Dynamic Income
                     style: const TextStyle(
                       fontSize: 22,
                       fontWeight: FontWeight.bold,
@@ -211,7 +205,7 @@ class HomeScreenState extends State<HomeScreen> {
                   ),
                   const SizedBox(height: 5),
                   Text(
-                    expense.toStringAsFixed(0), // ডাইনামিক ব্যয়
+                    expense.toStringAsFixed(0), // Dynamic Expance
                     style: const TextStyle(
                       fontSize: 22,
                       fontWeight: FontWeight.bold,
@@ -228,7 +222,8 @@ class HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildTimeFilterTabs() {
-    // TODO: এই ট্যাবগুলোকে কার্যকরী করতে হবে।
+    // TODO: These tabs need to be made functional.
+    // like the weekly monthly yearly recent transection
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceAround,
       children: [

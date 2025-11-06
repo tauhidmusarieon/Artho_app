@@ -10,7 +10,7 @@ class TransactionScreen extends StatelessWidget {
         padding: EdgeInsets.all(70.0),
         child: Text('Feature paused. Developer battery at 1% — send snacks. 🍕⚡', style: TextStyle(fontSize: 25,color: Colors.black),),
       )),
-      // TODO: এখানে সব ট্রানজ্যাকশন দেখানো হবে
+      // TODO: All transactions will be shown here.
     );
   }
 }

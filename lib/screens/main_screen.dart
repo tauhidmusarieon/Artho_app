@@ -1,5 +1,4 @@
 import 'package:artho_app/screens/add_transaction_screen.dart';
-// ১. Import ঠিক করা হয়েছে
 import 'package:artho_app/screens/home screens/home_screen.dart';
 import 'package:artho_app/screens/profile_screen.dart';
 import 'package:artho_app/screens/statistics_screen.dart';
@@ -16,7 +15,6 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
 
-  // ২. GlobalKey-এর টাইপ ঠিক করা হয়েছে ( _HomeScreenState -> HomeScreenState )
   final GlobalKey<HomeScreenState> _homeKey = GlobalKey<HomeScreenState>();
 
   late List<Widget> _widgetOptions;
@@ -25,7 +23,7 @@ class _MainScreenState extends State<MainScreen> {
   void initState() {
     super.initState();
     _widgetOptions = <Widget>[
-      HomeScreen(key: _homeKey), // Key টি এখানে পাস করা হলো
+      HomeScreen(key: _homeKey), // The key is passed here
       const TransactionScreen(),
       const StatisticsScreen(),
       const ProfileScreen(),
@@ -50,10 +48,8 @@ class _MainScreenState extends State<MainScreen> {
       },
     );
 
-    // যদি ট্রানজ্যাকশন সফলভাবে অ্যাড হয় (result == true)
     if (result == true) {
-      // HomeScreen-কে রিফ্রেশ করতে বলা হচ্ছে
-      // ৩. এই লাইনটি এখন HomeScreenState-কে খুঁজে পাবে
+      // This line will now find the HomeScreenState
       _homeKey.currentState?.fetchDataAndUser();
     }
   }
@@ -105,7 +101,7 @@ class _MainScreenState extends State<MainScreen> {
     );
   }
 
-  // ন্যাভিগেশন আইটেম বানানোর একটি হেল্পার
+  // A helper for creating navigation items
   Widget _buildNavItem({
     required IconData icon,
     required String text,

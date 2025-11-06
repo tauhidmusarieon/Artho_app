@@ -15,7 +15,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
   final _titleController = TextEditingController();
   final _categoryController = TextEditingController(
     text: 'General',
-  ); // ক্যাটেগরি
+  ); // Category
 
   bool _isExpense = true;
   bool _isLoading = false;
@@ -41,7 +41,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
       final category = _categoryController.text;
 
       final newTransaction = TransactionModel(
-        id: '', // ID ফায়ারস্টোর নিজে বানাবে
+        id: '', // ID Firestore will generate it itself
         title: title,
         amount: amount,
         isExpense: _isExpense,
@@ -52,7 +52,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
       await FirestoreService().addTransaction(newTransaction);
 
       if (mounted) {
-        // সফল হলে 'true' পাঠিয়ে modal বন্ধ করা
+        // Close the modal by sending 'true' if successful
         Navigator.of(context).pop(true);
       }
     } catch (e) {

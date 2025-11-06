@@ -15,7 +15,7 @@ class StatisticsScreen extends StatelessWidget {
           ),
         ),
       ),
-      // TODO: এখানে গ্রাফ দেখানো হবে
+      // TODO: The graph will be shown here.
     );
   }
 }

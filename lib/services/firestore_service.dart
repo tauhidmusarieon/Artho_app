@@ -47,7 +47,7 @@ class FirestoreService {
     }
   }
 
-  // --- মাসিক আয় ও ব্যয় হিসাব করা ---
+  // --- Calculating monthly income and expenses ---
   Future<Map<String, double>> getMonthlyIncomeExpense() async {
     if (_userId == null) return {'income': 0.0, 'expense': 0.0};
 
