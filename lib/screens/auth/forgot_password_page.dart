@@ -18,7 +18,6 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
     super.dispose();
   }
 
-  // --- THIS IS THE FIXED FUNCTION ---
   Future<void> _sendPasswordResetEmail() async {
     final email = _emailController.text.trim();
     if (email.isEmpty) {
@@ -33,44 +32,46 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
     if (!mounted) return;
     setState(() => _isLoading = true);
 
-    try {
-      //
-      // We just try to send the email. Firebase will throw an error
-      // if the user doesn't exist.
-      await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
+    String? snackbarMessage; 
 
-      // If the line above does NOT throw an error, the email was sent.
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Password reset email sent. Check your inbox.'),
-          ),
-        );
-        Navigator.of(context).pop();
+    try {
+      // Check if the email is registered
+      final methods = await FirebaseAuth.instance.fetchSignInMethodsForEmail(
+        email,
+      );
+
+      // If the 'methods' list is empty, it means no account has been opened with this email.
+      if (methods.isEmpty) {
+        snackbarMessage = 'No user found with this email.';
+      } else {
+        // If the list is not empty, it means there are users. Now the reset link is being sent.
+        await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
+        snackbarMessage = 'Password reset email sent. Check your inbox.';
+
+        if (mounted) {
+          Navigator.of(context).pop(); 
+        }
       }
     } on FirebaseAuthException catch (e) {
-      // HERE is where we catch the 'user-not-found' error.
-      if (mounted) {
-        String message;
-        if (e.code == 'user-not-found') {
-          message = 'No user found with this email.';
-        } else if (e.code == 'invalid-email') {
-          message = 'The email address is badly formatted.';
-        } else {
-          // Handle other errors (like network issues)
-          message = e.message ?? 'An unknown error occurred.';
-        }
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(message)));
+      // Other errors (e.g., email format incorrect, network problem)
+      if (e.code == 'invalid-email') {
+        snackbarMessage = 'The email address is badly formatted.';
+      } else {
+        snackbarMessage = e.message ?? 'An unknown error occurred.';
       }
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
+        // Show message after completion of task (success or failure)
+        if (snackbarMessage != null) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(snackbarMessage)));
+        }
       }
     }
   }
-  // --- END OF FIXED FUNCTION ---
+
 
   @override
   Widget build(BuildContext context) {
@@ -99,7 +100,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
             TextField(
               controller: _emailController,
               keyboardType: TextInputType.emailAddress,
-              autocorrect: false, // Good for email fields
+              autocorrect: false,
               decoration: const InputDecoration(
                 labelText: "Email",
                 hintText: "Enter your registered email",
