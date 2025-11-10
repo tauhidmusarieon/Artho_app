@@ -81,7 +81,7 @@ class _SignUpPageState extends State<SignUpPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color.fromRGBO(249, 239, 194, 1),
+      backgroundColor: const Color.fromRGBO(253, 249, 246, 1),
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 60),
@@ -146,7 +146,7 @@ class _SignUpPageState extends State<SignUpPage> {
                   ),
                   child: _isLoading
                       ? const CircularProgressIndicator(color: Colors.white)
-                      : const Text("Sign Up"),
+                      : const Text("Sign Up",style: TextStyle(color: Colors.white),),
                 ),
               ),
               const SizedBox(height: 25),

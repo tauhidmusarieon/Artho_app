@@ -32,7 +32,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
     setState(() => _isLoading = true);
 
     try {
-      // 🔍 Step 1: Check if this email exists in your Firestore "users" collection
+      //Step 1: Check if this email exists in your Firestore "users" collection
       final query = await FirebaseFirestore.instance
           .collection('users')
           .where('email', isEqualTo: email)
@@ -90,9 +90,13 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color.fromRGBO(249, 239, 194, 1),
+      backgroundColor: const Color.fromRGBO(253, 249, 246, 1),
       appBar: AppBar(
-        title: const Text("Reset Password"),
+        
+        title: Padding(
+          padding: const EdgeInsets.only(left: 45),
+          child: const Text("Reset Password",style: TextStyle(fontWeight: FontWeight.w400,color: Colors.black87),),
+        ),
         backgroundColor: Colors.transparent,
         elevation: 0,
       ),
@@ -103,7 +107,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
           children: [
             const Text(
               "Forgot your password?",
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.w400),
             ),
             const SizedBox(height: 10),
             const Text(
@@ -138,7 +142,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                           color: Colors.white,
                         ),
                       )
-                    : const Text("Send Reset Link"),
+                    : const Text("Send Reset Link",style: TextStyle(color: Colors.white),),
               ),
             ),
           ],

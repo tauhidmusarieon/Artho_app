@@ -36,7 +36,7 @@ class HomeScreenState extends State<HomeScreen> {
   Future<void> fetchDataAndUser() async {
     setState(() => _isLoading = true);
     try {
-      // Loading user name 
+      // Loading user name
       final userData = await _firestoreService.getUserData();
       if (userData != null && userData['username'] != null) {
         _userName = userData['username'];
@@ -67,7 +67,7 @@ class HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color.fromRGBO(249, 239, 194, 1),
+      backgroundColor: const Color.fromRGBO(253, 249, 246, 1),
       appBar: AppBar(
         automaticallyImplyLeading: false,
         title: Row(
@@ -128,13 +128,13 @@ class HomeScreenState extends State<HomeScreen> {
     );
   }
 
-Widget _buildBalanceCard(double balance) {
+  Widget _buildBalanceCard(double balance) {
     // Choose color based on balance value
     Color cardColor;
     if (balance < 0) {
-      cardColor = Colors.redAccent; // Negative balance
+      cardColor = const Color.fromRGBO(231, 76, 60, 1); // Negative balance
     } else if (balance > 0) {
-      cardColor = const Color.fromARGB(255, 32, 192, 115); // Positive balance
+      cardColor = const Color.fromRGBO(46, 204, 113, 1); // Positive balance
     } else {
       cardColor = Colors.grey; // Zero balance (optional)
     }
@@ -167,7 +167,6 @@ Widget _buildBalanceCard(double balance) {
     );
   }
 
-
   Widget _buildIncomeExpenseSummary(double income, double expense) {
     return Row(
       children: [
@@ -191,7 +190,7 @@ Widget _buildBalanceCard(double balance) {
                     style: const TextStyle(
                       fontSize: 22,
                       fontWeight: FontWeight.bold,
-                      color: Colors.green,
+                      color: Color.fromRGBO(46, 204, 113, 1),
                     ),
                   ),
                 ],
@@ -220,7 +219,7 @@ Widget _buildBalanceCard(double balance) {
                     style: const TextStyle(
                       fontSize: 22,
                       fontWeight: FontWeight.bold,
-                      color: Colors.red,
+                      color: Color.fromRGBO(231, 76, 60, 1),
                     ),
                   ),
                 ],
@@ -251,14 +250,14 @@ Widget _buildBalanceCard(double balance) {
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
       decoration: BoxDecoration(
         color: isActive
-            ? Colors.blueAccent.withOpacity(0.1)
+            ? const Color.fromRGBO(33, 150, 243, 0.1)
             : Colors.transparent,
         borderRadius: BorderRadius.circular(20),
       ),
       child: Text(
         text,
         style: TextStyle(
-          color: isActive ? Colors.blueAccent : Colors.grey,
+          color: isActive ? const Color.fromRGBO(33, 150, 243, 1) : Colors.grey,
           fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
         ),
       ),
@@ -308,7 +307,9 @@ Widget _buildBalanceCard(double balance) {
     final icon = transaction.isExpense
         ? Icons.arrow_downward
         : Icons.arrow_upward;
-    final color = transaction.isExpense ? Colors.red : Colors.green;
+    final color = transaction.isExpense
+        ? const Color.fromRGBO(231, 76, 60, 1)
+        : const Color.fromRGBO(46, 204, 113, 1);
     final amountText = transaction.isExpense
         ? '-${transaction.amount.toStringAsFixed(0)}'
         : '+${transaction.amount.toStringAsFixed(0)}';

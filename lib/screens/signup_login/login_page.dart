@@ -61,7 +61,7 @@ class _LoginPageState extends State<LoginPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color.fromRGBO(249, 239, 194, 1),
+      backgroundColor: const Color.fromRGBO(253, 249, 246, 1),
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 60),
@@ -69,7 +69,7 @@ class _LoginPageState extends State<LoginPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
-                "Hi, Welcome Back!",
+                "Good to see you again!",
                 style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 20),
@@ -78,7 +78,7 @@ class _LoginPageState extends State<LoginPage> {
                 keyboardType: TextInputType.emailAddress,
                 decoration: const InputDecoration(
                   labelText: "Email",
-                  hintText: "example@gmail.com",
+                  hintText: "artho@gmail.com",
                   border: OutlineInputBorder(),
                 ),
               ),
@@ -136,7 +136,7 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                   child: _isLoading
                       ? const CircularProgressIndicator(color: Colors.white)
-                      : const Text("Login"),
+                      : const Text("Login",style: TextStyle(color: Colors.white),),
                 ),
               ),
               const SizedBox(height: 25),
