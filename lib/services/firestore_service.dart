@@ -1,6 +1,6 @@
+import 'package:artho_app/models/transaction_model.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import '../models/transaction_model.dart';
 
 class FirestoreService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
@@ -19,28 +19,40 @@ class FirestoreService {
   }
 
   // --- total amount calculation ---
+  // NOTE: This now returns the *current month* balance (Income - Expense).
   Future<double> getAccountBalance() async {
     if (_userId == null) return 0.0;
 
     double totalIncome = 0.0;
     double totalExpense = 0.0;
 
+    final now = DateTime.now();
+    final startOfMonth = DateTime(now.year, now.month, 1);
+    final startOfNextMonth = DateTime(now.year, now.month + 1, 1);
+
     try {
       QuerySnapshot snapshot = await _db
           .collection('users')
           .doc(_userId)
           .collection('transactions')
+          .where('date', isGreaterThanOrEqualTo: startOfMonth)
+          .where('date', isLessThan: startOfNextMonth)
           .get();
 
       for (var doc in snapshot.docs) {
-        Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
-        if (data['isExpense'] == true) {
-          totalExpense += (data['amount'] ?? 0).toDouble();
+        final data = doc.data() as Map<String, dynamic>;
+        final amount = (data['amount'] ?? 0).toDouble();
+        final type = (data['type'] as String?)?.toLowerCase();
+        final isExpense = type == 'expense' || (data['isExpense'] == true);
+
+        if (isExpense) {
+          totalExpense += amount;
         } else {
-          totalIncome += (data['amount'] ?? 0).toDouble();
+          totalIncome += amount;
         }
       }
-      return totalIncome - totalExpense; // Balance = Income - Expense
+
+      return totalIncome - totalExpense;
     } catch (e) {
       print('Error getting account balance: $e');
       return 0.0;
@@ -54,9 +66,9 @@ class FirestoreService {
     double monthlyIncome = 0.0;
     double monthlyExpense = 0.0;
 
-    DateTime now = DateTime.now();
-    DateTime startOfMonth = DateTime(now.year, now.month, 1);
-    DateTime endOfMonth = DateTime(
+    final now = DateTime.now();
+    final startOfMonth = DateTime(now.year, now.month, 1);
+    final endOfMonth = DateTime(
       now.year,
       now.month + 1,
       0,
@@ -72,13 +84,18 @@ class FirestoreService {
           .get();
 
       for (var doc in snapshot.docs) {
-        Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
-        if (data['isExpense'] == true) {
-          monthlyExpense += (data['amount'] ?? 0).toDouble();
+        final data = doc.data() as Map<String, dynamic>;
+        final amount = (data['amount'] ?? 0).toDouble();
+        final type = (data['type'] as String?)?.toLowerCase();
+        final isExpense = type == 'expense' || (data['isExpense'] == true);
+
+        if (isExpense) {
+          monthlyExpense += amount;
         } else {
-          monthlyIncome += (data['amount'] ?? 0).toDouble();
+          monthlyIncome += amount;
         }
       }
+
       return {'income': monthlyIncome, 'expense': monthlyExpense};
     } catch (e) {
       print('Error getting monthly data: $e');
@@ -86,27 +103,89 @@ class FirestoreService {
     }
   }
 
-
-  Future<List<TransactionModel>> getRecentTransactions() async {
-    if (_userId == null) return [];
-    List<TransactionModel> transactions = [];
+  // --- helpers: totals by type in a custom date range ---
+  Future<double> totalByTypeInRange(
+    String type,
+    DateTime from,
+    DateTime to,
+  ) async {
+    if (_userId == null) return 0.0;
     try {
-      QuerySnapshot snapshot = await _db
+      final q = await _db
           .collection('users')
           .doc(_userId)
           .collection('transactions')
-          .orderBy('date', descending: true)
-          .limit(6) 
+          .where('type', isEqualTo: type)
+          .where('date', isGreaterThanOrEqualTo: from)
+          .where('date', isLessThan: to)
           .get();
 
-      for (var doc in snapshot.docs) {
-        transactions.add(TransactionModel.fromFirestore(doc));
+      return q.docs.fold<double>(
+        0.0,
+        (sum, d) =>
+            sum +
+            ((d.data())['amount'] as num).toDouble(),
+      );
+    } catch (e) {
+      print('Error calculating totalByTypeInRange: $e');
+      return 0.0;
+    }
+  }
+
+  // --- recent transactions (optional date window) ---
+  Future<List<TransactionModel>> getRecentTransactions({
+    DateTime? from,
+    DateTime? to,
+    int limit = 6,
+  }) async {
+    if (_userId == null) return [];
+    try {
+      Query q = _db
+          .collection('users')
+          .doc(_userId)
+          .collection('transactions')
+          .orderBy('date', descending: true);
+
+      if (from != null) {
+        q = q.where('date', isGreaterThanOrEqualTo: from);
       }
-      return transactions;
+      if (to != null) {
+        q = q.where('date', isLessThan: to);
+      }
+
+      final snapshot = await q.limit(limit).get();
+      return snapshot.docs.map(_txFromDoc).toList();
     } catch (e) {
       print('Error getting recent transactions: $e');
       return [];
     }
+  }
+
+  // --- stream for lists with filters (Home chips & Transaction tab) ---
+  Stream<List<TransactionModel>> streamTransactions({
+    DateTime? from,
+    DateTime? to,
+    int? limit,
+  }) {
+    if (_userId == null) return const Stream.empty();
+
+    Query q = _db
+        .collection('users')
+        .doc(_userId)
+        .collection('transactions')
+        .orderBy('date', descending: true);
+
+    if (from != null) {
+      q = q.where('date', isGreaterThanOrEqualTo: from);
+    }
+    if (to != null) {
+      q = q.where('date', isLessThan: to);
+    }
+    if (limit != null) {
+      q = q.limit(limit);
+    }
+
+    return q.snapshots().map((s) => s.docs.map(_txFromDoc).toList());
   }
 
   // --- add new transection ---
@@ -120,7 +199,69 @@ class FirestoreService {
           .add(transaction.toMap());
     } catch (e) {
       print('Error adding transaction: $e');
-      throw e; 
+      rethrow;
     }
+  }
+
+  // --- update transection (edit previous items) ---
+  Future<void> updateTransaction(TransactionModel transaction) async {
+    if (_userId == null) return;
+    try {
+      await _db
+          .collection('users')
+          .doc(_userId)
+          .collection('transactions')
+          .doc(transaction.id)
+          .update(transaction.toMap());
+    } catch (e) {
+      print('Error updating transaction: $e');
+      rethrow;
+    }
+  }
+
+  // --- delete transection ---
+  Future<void> deleteTransaction(String id) async {
+    if (_userId == null) return;
+    try {
+      await _db
+          .collection('users')
+          .doc(_userId)
+          .collection('transactions')
+          .doc(id)
+          .delete();
+    } catch (e) {
+      print('Error deleting transaction: $e');
+      rethrow;
+    }
+  }
+
+  // ====== PRIVATE: map Firestore doc -> TransactionModel (handles legacy fields) ======
+  TransactionModel _txFromDoc(QueryDocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>;
+
+    // Handle both new ('type') and old ('isExpense') schemas
+    final String type =
+        (data['type'] as String?)?.toLowerCase() ??
+        ((data['isExpense'] == true) ? 'expense' : 'income');
+
+    // Timestamp or DateTime or null
+    final rawDate = data['date'];
+    DateTime date;
+    if (rawDate is Timestamp) {
+      date = rawDate.toDate();
+    } else if (rawDate is DateTime) {
+      date = rawDate;
+    } else {
+      date = DateTime.now();
+    }
+
+    return TransactionModel(
+      id: doc.id,
+      title: (data['title'] ?? '') as String,
+      amount: (data['amount'] ?? 0).toDouble(),
+      type: type,
+      category: (data['category'] ?? 'General') as String,
+      date: date,
+    );
   }
 }

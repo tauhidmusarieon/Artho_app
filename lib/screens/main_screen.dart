@@ -23,7 +23,11 @@ class _MainScreenState extends State<MainScreen> {
   void initState() {
     super.initState();
     _widgetOptions = <Widget>[
-      HomeScreen(key: _homeKey), // The key is passed here
+      // ✅ pass callback to go to transactions tab
+      HomeScreen(
+        key: _homeKey,
+        onViewAll: _goToTransactions, // ✅ this will now work
+      ),
       const TransactionScreen(),
       const StatisticsScreen(),
       const ProfileScreen(),
@@ -33,6 +37,13 @@ class _MainScreenState extends State<MainScreen> {
   void _onItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
+    });
+  }
+
+  // ✅ called from HomeScreen's "View All" button
+  void _goToTransactions() {
+    setState(() {
+      _selectedIndex = 1; // index for Transaction tab
     });
   }
 
@@ -49,7 +60,7 @@ class _MainScreenState extends State<MainScreen> {
     );
 
     if (result == true) {
-      // This line will now find the HomeScreenState
+      // ✅ refresh HomeScreen data after adding transaction
       _homeKey.currentState?.fetchDataAndUser();
     }
   }
@@ -101,7 +112,7 @@ class _MainScreenState extends State<MainScreen> {
     );
   }
 
-  // A helper for creating navigation items
+  // Helper for bottom nav items
   Widget _buildNavItem({
     required IconData icon,
     required String text,

@@ -3,9 +3,22 @@ import 'package:artho_app/services/firestore_service.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+/// --- Moved out of the class: range filter enum ---
+enum RangeFilter { today, week, month, year }
+
+/// --- Replace Dart 3 record with a simple helper type for max compatibility ---
+class _DateRange {
+  final DateTime from;
+  final DateTime to;
+  const _DateRange(this.from, this.to);
+}
+
 class HomeScreen extends StatefulWidget {
   // Key added here to call from MainScreen
-  const HomeScreen({super.key});
+  const HomeScreen({super.key, this.onViewAll}); // ✅ added optional callback
+
+  final VoidCallback?
+  onViewAll; // ✅ this allows MainScreen to control navigation
 
   @override
   State<HomeScreen> createState() => HomeScreenState();
@@ -22,6 +35,10 @@ class HomeScreenState extends State<HomeScreen> {
   String _currentDate = '';
   String _userName = 'User'; // Default name
 
+  // --- range filter state (Today is auto-selected) ---
+  // like the weekly monthly yearly recent transection
+  RangeFilter _filter = RangeFilter.today;
+
   @override
   void initState() {
     super.initState();
@@ -31,6 +48,47 @@ class HomeScreenState extends State<HomeScreen> {
 
   void _setCurrentDate() {
     _currentDate = DateFormat('EEEE dd MMMM').format(DateTime.now());
+  }
+
+  // --- helper to get [from, to) window for Firestore ---
+  _DateRange _windowFor(RangeFilter filter) {
+    final now = DateTime.now();
+    final startOfToday = DateTime(now.year, now.month, now.day);
+
+    switch (filter) {
+      case RangeFilter.today:
+        return _DateRange(
+          startOfToday,
+          startOfToday.add(const Duration(days: 1)),
+        );
+      case RangeFilter.week:
+        final from = startOfToday.subtract(
+          const Duration(days: 6),
+        ); // today + previous 6 days
+        final to = startOfToday.add(const Duration(days: 1));
+        return _DateRange(from, to);
+      case RangeFilter.month:
+        final from = DateTime(now.year, now.month, 1);
+        final to = DateTime(now.year, now.month + 1, 1);
+        return _DateRange(from, to);
+      case RangeFilter.year:
+        final from = DateTime(now.year, 1, 1);
+        final to = DateTime(now.year + 1, 1, 1);
+        return _DateRange(from, to);
+    }
+  }
+
+  // --- load recent transactions for current filter ---
+  Future<void> _loadRecentForFilter() async {
+    final w = _windowFor(_filter);
+    final tx = await _firestoreService.getRecentTransactions(
+      from: w.from,
+      to: w.to,
+      limit: 6,
+    );
+    if (mounted) {
+      setState(() => _recentTransactions = tx);
+    }
   }
 
   Future<void> fetchDataAndUser() async {
@@ -45,14 +103,16 @@ class HomeScreenState extends State<HomeScreen> {
       // Loading all financial data together
       final balance = await _firestoreService.getAccountBalance();
       final incomeExpense = await _firestoreService.getMonthlyIncomeExpense();
-      final transactions = await _firestoreService.getRecentTransactions();
+
+      // --- load recent with current filter (Today by default) ---
+      await _loadRecentForFilter();
 
       if (mounted) {
         setState(() {
           _accountBalance = balance;
           _monthlyIncome = incomeExpense['income'] ?? 0.0;
           _monthlyExpense = incomeExpense['expense'] ?? 0.0;
-          _recentTransactions = transactions;
+          // _recentTransactions already set by _loadRecentForFilter
         });
       }
     } catch (e) {
@@ -62,6 +122,13 @@ class HomeScreenState extends State<HomeScreen> {
         setState(() => _isLoading = false);
       }
     }
+  }
+
+  // --- when a chip is tapped, change filter and reload ---
+  Future<void> _onFilterTap(RangeFilter f) async {
+    if (_filter == f) return;
+    setState(() => _filter = f);
+    await _loadRecentForFilter();
   }
 
   @override
@@ -111,6 +178,7 @@ class HomeScreenState extends State<HomeScreen> {
               onRefresh: fetchDataAndUser, // on Refresh
               child: SingleChildScrollView(
                 padding: const EdgeInsets.all(16.0),
+                physics: const AlwaysScrollableScrollPhysics(),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -118,7 +186,7 @@ class HomeScreenState extends State<HomeScreen> {
                     const SizedBox(height: 20),
                     _buildIncomeExpenseSummary(_monthlyIncome, _monthlyExpense),
                     const SizedBox(height: 20),
-                    _buildTimeFilterTabs(),
+                    _buildTimeFilterTabs(), // like the weekly monthly yearly recent transection
                     const SizedBox(height: 20),
                     _buildRecentTransactions(_recentTransactions),
                   ],
@@ -232,33 +300,58 @@ class HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildTimeFilterTabs() {
-    // TODO: These tabs need to be made functional.
     // like the weekly monthly yearly recent transection
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceAround,
       children: [
-        _buildFilterTab('Today', isActive: true),
-        _buildFilterTab('Week'),
-        _buildFilterTab('Month'),
-        _buildFilterTab('Year'),
+        _buildFilterTab(
+          'Today',
+          isActive: _filter == RangeFilter.today,
+          onTap: () => _onFilterTap(RangeFilter.today),
+        ),
+        _buildFilterTab(
+          'Week',
+          isActive: _filter == RangeFilter.week,
+          onTap: () => _onFilterTap(RangeFilter.week),
+        ),
+        _buildFilterTab(
+          'Month',
+          isActive: _filter == RangeFilter.month,
+          onTap: () => _onFilterTap(RangeFilter.month),
+        ),
+        _buildFilterTab(
+          'Year',
+          isActive: _filter == RangeFilter.year,
+          onTap: () => _onFilterTap(RangeFilter.year),
+        ),
       ],
     );
   }
 
-  Widget _buildFilterTab(String text, {bool isActive = false}) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-      decoration: BoxDecoration(
-        color: isActive
-            ? const Color.fromRGBO(33, 150, 243, 0.1)
-            : Colors.transparent,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Text(
-        text,
-        style: TextStyle(
-          color: isActive ? const Color.fromRGBO(33, 150, 243, 1) : Colors.grey,
-          fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+  Widget _buildFilterTab(
+    String text, {
+    bool isActive = false,
+    VoidCallback? onTap,
+  }) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(20),
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+        decoration: BoxDecoration(
+          color: isActive
+              ? const Color.fromRGBO(33, 150, 243, 0.1)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Text(
+          text,
+          style: TextStyle(
+            color: isActive
+                ? const Color.fromRGBO(33, 150, 243, 1)
+                : Colors.grey,
+            fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+          ),
         ),
       ),
     );
@@ -275,10 +368,12 @@ class HomeScreenState extends State<HomeScreen> {
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             TextButton(
-              onPressed: () {
-                // TODO: Navigate to Transactions Screen (Page 5)
-                print('Navigate to Transaction Page (View All)');
-              },
+              onPressed:
+                  widget.onViewAll ??
+                  () {
+                    // TODO: hook to MainScreen if needed
+                    print('Navigate to Transaction Page (View All)');
+                  },
               child: const Text('View All'),
             ),
           ],
@@ -304,15 +399,17 @@ class HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildTransactionItem(TransactionModel transaction) {
-    final icon = transaction.isExpense
-        ? Icons.arrow_downward
-        : Icons.arrow_upward;
-    final color = transaction.isExpense
+    final bool isExpense = transaction.type == 'expense'; // <-- FIX
+    final icon = isExpense ? Icons.arrow_downward : Icons.arrow_upward;
+    final color = isExpense
         ? const Color.fromRGBO(231, 76, 60, 1)
         : const Color.fromRGBO(46, 204, 113, 1);
-    final amountText = transaction.isExpense
+    final amountText = isExpense
         ? '-${transaction.amount.toStringAsFixed(0)}'
         : '+${transaction.amount.toStringAsFixed(0)}';
+
+    // show formatted date under title
+    final dateText = DateFormat('d MMM yyyy').format(transaction.date);
 
     return Card(
       elevation: 0,
@@ -328,6 +425,7 @@ class HomeScreenState extends State<HomeScreen> {
           transaction.title,
           style: const TextStyle(fontWeight: FontWeight.w500),
         ),
+        subtitle: Text(dateText),
         trailing: Text(
           amountText,
           style: TextStyle(
