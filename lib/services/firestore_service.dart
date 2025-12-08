@@ -13,7 +13,7 @@ class FirestoreService {
       DocumentSnapshot doc = await _db.collection('users').doc(_userId).get();
       return doc.data() as Map<String, dynamic>?;
     } catch (e) {
-      print('Error getting user data: $e');
+      //print('Error getting user data: $e');
       return null;
     }
   }
@@ -54,7 +54,7 @@ class FirestoreService {
 
       return totalIncome - totalExpense;
     } catch (e) {
-      print('Error getting account balance: $e');
+      //print('Error getting account balance: $e');
       return 0.0;
     }
   }
@@ -98,7 +98,7 @@ class FirestoreService {
 
       return {'income': monthlyIncome, 'expense': monthlyExpense};
     } catch (e) {
-      print('Error getting monthly data: $e');
+      //print('Error getting monthly data: $e');
       return {'income': 0.0, 'expense': 0.0};
     }
   }
@@ -127,7 +127,7 @@ class FirestoreService {
             ((d.data())['amount'] as num).toDouble(),
       );
     } catch (e) {
-      print('Error calculating totalByTypeInRange: $e');
+      //print('Error calculating totalByTypeInRange: $e');
       return 0.0;
     }
   }
@@ -156,7 +156,7 @@ class FirestoreService {
       final snapshot = await q.limit(limit).get();
       return snapshot.docs.map(_txFromDoc).toList();
     } catch (e) {
-      print('Error getting recent transactions: $e');
+      //print('Error getting recent transactions: $e');
       return [];
     }
   }
@@ -198,7 +198,7 @@ class FirestoreService {
           .collection('transactions')
           .add(transaction.toMap());
     } catch (e) {
-      print('Error adding transaction: $e');
+      //print('Error adding transaction: $e');
       rethrow;
     }
   }
@@ -214,7 +214,7 @@ class FirestoreService {
           .doc(transaction.id)
           .update(transaction.toMap());
     } catch (e) {
-      print('Error updating transaction: $e');
+      //print('Error updating transaction: $e');
       rethrow;
     }
   }
@@ -230,7 +230,7 @@ class FirestoreService {
           .doc(id)
           .delete();
     } catch (e) {
-      print('Error deleting transaction: $e');
+      //print('Error deleting transaction: $e');
       rethrow;
     }
   }
@@ -264,4 +264,82 @@ class FirestoreService {
       date: date,
     );
   }
+
+    // --- NEW: given any date range, return total income & expense ---
+  Future<Map<String, double>> getIncomeExpenseInRange(
+    DateTime from,
+    DateTime to,
+  ) async {
+    if (_userId == null) return {'income': 0.0, 'expense': 0.0};
+
+    double income = 0.0;
+    double expense = 0.0;
+
+    try {
+      final snap = await _db
+          .collection('users')
+          .doc(_userId)
+          .collection('transactions')
+          .where('date', isGreaterThanOrEqualTo: from)
+          .where('date', isLessThan: to)
+          .get();
+
+      for (var d in snap.docs) {
+        final data = d.data() as Map<String, dynamic>;
+        final amount = (data['amount'] ?? 0).toDouble();
+        final type = (data['type'] as String?)?.toLowerCase();
+        final isExpense = type == 'expense' || (data['isExpense'] == true);
+
+        if (isExpense) {
+          expense += amount;
+        } else {
+          income += amount;
+        }
+      }
+
+      return {'income': income, 'expense': expense};
+    } catch (e) {
+      //print('Error getIncomeExpenseInRange: $e');
+      return {'income': 0.0, 'expense': 0.0};
+    }
+  }
+
+  // --- NEW: today's expenses grouped by category (for Today pie chart) ---
+  Future<Map<String, double>> getTodayExpenseByCategory() async {
+    if (_userId == null) return {};
+
+    final now = DateTime.now();
+    final startOfToday = DateTime(now.year, now.month, now.day);
+    final tomorrow = startOfToday.add(const Duration(days: 1));
+
+    final Map<String, double> byCategory = {};
+
+    try {
+      final snap = await _db
+          .collection('users')
+          .doc(_userId)
+          .collection('transactions')
+          .where('date', isGreaterThanOrEqualTo: startOfToday)
+          .where('date', isLessThan: tomorrow)
+          .get();
+
+      for (var d in snap.docs) {
+        final data = d.data() as Map<String, dynamic>;
+        final amount = (data['amount'] ?? 0).toDouble();
+        final type = (data['type'] as String?)?.toLowerCase();
+        final isExpense = type == 'expense' || (data['isExpense'] == true);
+
+        if (!isExpense) continue; 
+
+        final cat = (data['category'] ?? 'Other') as String;
+        byCategory[cat] = (byCategory[cat] ?? 0) + amount;
+      }
+
+      return byCategory;
+    } catch (e) {
+      //print('Error getTodayExpenseByCategory: $e');
+      return {};
+    }
+  }
+
 }

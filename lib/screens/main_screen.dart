@@ -23,10 +23,10 @@ class _MainScreenState extends State<MainScreen> {
   void initState() {
     super.initState();
     _widgetOptions = <Widget>[
-      // ✅ pass callback to go to transactions tab
+      // pass callback to go to transactions tab
       HomeScreen(
         key: _homeKey,
-        onViewAll: _goToTransactions, // ✅ this will now work
+        onViewAll: _goToTransactions, // this will now work
       ),
       const TransactionScreen(),
       const StatisticsScreen(),
@@ -40,7 +40,7 @@ class _MainScreenState extends State<MainScreen> {
     });
   }
 
-  // ✅ called from HomeScreen's "View All" button
+  // called from HomeScreen's "View All" button
   void _goToTransactions() {
     setState(() {
       _selectedIndex = 1; // index for Transaction tab
@@ -60,7 +60,7 @@ class _MainScreenState extends State<MainScreen> {
     );
 
     if (result == true) {
-      // ✅ refresh HomeScreen data after adding transaction
+      // refresh HomeScreen data after adding transaction
       _homeKey.currentState?.fetchDataAndUser();
     }
   }

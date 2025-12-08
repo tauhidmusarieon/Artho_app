@@ -15,10 +15,10 @@ class _DateRange {
 
 class HomeScreen extends StatefulWidget {
   // Key added here to call from MainScreen
-  const HomeScreen({super.key, this.onViewAll}); // ✅ added optional callback
+  const HomeScreen({super.key, this.onViewAll}); //  added optional callback
 
   final VoidCallback?
-  onViewAll; // ✅ this allows MainScreen to control navigation
+  onViewAll; //  this allows MainScreen to control navigation
 
   @override
   State<HomeScreen> createState() => HomeScreenState();

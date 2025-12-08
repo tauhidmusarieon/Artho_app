@@ -178,6 +178,8 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
             ElevatedButton(
               onPressed: _isLoading ? null : _submitData,
               style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue, 
+                foregroundColor: Colors.white, 
                 minimumSize: const Size(double.infinity, 50),
               ),
               child: _isLoading
