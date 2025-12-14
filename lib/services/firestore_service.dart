@@ -285,7 +285,7 @@ class FirestoreService {
           .get();
 
       for (var d in snap.docs) {
-        final data = d.data() as Map<String, dynamic>;
+        final data = d.data();
         final amount = (data['amount'] ?? 0).toDouble();
         final type = (data['type'] as String?)?.toLowerCase();
         final isExpense = type == 'expense' || (data['isExpense'] == true);
@@ -324,7 +324,7 @@ class FirestoreService {
           .get();
 
       for (var d in snap.docs) {
-        final data = d.data() as Map<String, dynamic>;
+        final data = d.data();
         final amount = (data['amount'] ?? 0).toDouble();
         final type = (data['type'] as String?)?.toLowerCase();
         final isExpense = type == 'expense' || (data['isExpense'] == true);
