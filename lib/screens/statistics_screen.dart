@@ -2,6 +2,9 @@ import 'package:artho_app/services/firestore_service.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:artho_app/utils/chart_to_image.dart';
+import 'package:artho_app/utils/pdf_report.dart';
+
 
 class StatisticsScreen extends StatelessWidget {
   const StatisticsScreen({super.key});
@@ -11,71 +14,65 @@ class StatisticsScreen extends StatelessWidget {
     return DateTime(now.year, now.month, now.day);
   }
 
-  // আজ + শেষ ৭ দিন (আজসহ)
+  DateTimeRange _todayRange() {
+    final now = DateTime.now();
+    final start = DateTime(now.year, now.month, now.day);
+    final end = start.add(const Duration(days: 1));
+    return DateTimeRange(start: start, end: end);
+  }
+
   DateTimeRange _weekRange() {
-    final startToday = _startOfToday();
-    final from = startToday.subtract(const Duration(days: 6));
-    final to = startToday.add(const Duration(days: 1));
-    return DateTimeRange(start: from, end: to);
+    final today = _startOfToday();
+    return DateTimeRange(
+      start: today.subtract(const Duration(days: 6)),
+      end: today.add(const Duration(days: 1)),
+    );
   }
 
   DateTimeRange _monthRange() {
     final now = DateTime.now();
-    final from = DateTime(now.year, now.month, 1);
-    final to = DateTime(now.year, now.month + 1, 1);
-    return DateTimeRange(start: from, end: to);
+    return DateTimeRange(
+      start: DateTime(now.year, now.month, 1),
+      end: DateTime(now.year, now.month + 1, 1),
+    );
   }
 
   DateTimeRange _yearRange() {
     final now = DateTime.now();
-    final from = DateTime(now.year, 1, 1);
-    final to = DateTime(now.year + 1, 1, 1);
-    return DateTimeRange(start: from, end: to);
+    return DateTimeRange(
+      start: DateTime(now.year, 1, 1),
+      end: DateTime(now.year + 1, 1, 1),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final service = FirestoreService();
-    final today = _startOfToday();
-    final weekRange = _weekRange();
-    final monthRange = _monthRange();
-    final yearRange = _yearRange();
 
     return Scaffold(
       appBar: AppBar(title: const Text('Statistics')),
-      backgroundColor: const Color.fromRGBO(253, 249, 246, 1),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            // 1) TODAY – category wise expense
-            _TodayCategoryChartCard(service: service, date: today),
-            const SizedBox(height: 16),
-
-            // 2) WEEK – income vs expense
-            _RangeIncomeExpenseCard(
+            _TodayIncomeExpenseCard(
+              service: service,
+              range: _todayRange(),
+            ),
+            _RangeCard(
               title: 'This Week',
+              range: _weekRange(),
               service: service,
-              from: weekRange.start,
-              to: weekRange.end,
             ),
-            const SizedBox(height: 16),
-
-            // 3) MONTH – income vs expense
-            _RangeIncomeExpenseCard(
+            _RangeCard(
               title: 'This Month',
+              range: _monthRange(),
               service: service,
-              from: monthRange.start,
-              to: monthRange.end,
             ),
-            const SizedBox(height: 16),
-
-            // 4) YEAR – income vs expense
-            _RangeIncomeExpenseCard(
+            _RangeCard(
               title: 'This Year',
+              range: _yearRange(),
               service: service,
-              from: yearRange.start,
-              to: yearRange.end,
             ),
           ],
         ),
@@ -84,241 +81,107 @@ class StatisticsScreen extends StatelessWidget {
   }
 }
 
-/// TODAY: category-wise expense pie chart
-class _TodayCategoryChartCard extends StatelessWidget {
-  final FirestoreService service;
-  final DateTime date;
+/* ================= TODAY CATEGORY ================= */
 
-  const _TodayCategoryChartCard({required this.service, required this.date});
+class _TodayIncomeExpenseCard extends StatelessWidget {
+  final FirestoreService service;
+  final DateTimeRange range;
+
+  const _TodayIncomeExpenseCard({required this.service, required this.range});
 
   @override
   Widget build(BuildContext context) {
-    final formatted = DateFormat('EEE, d MMM').format(date);
+    final chartKey = GlobalKey();
+    final dateText = DateFormat('EEE, d MMM').format(range.start);
 
     return Card(
+      margin: const EdgeInsets.only(bottom: 16),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      elevation: 2,
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            Text(
-              "Today's Expenses by Category",
-              style: Theme.of(
-                context,
-              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              formatted,
-              style: TextStyle(color: Colors.grey[600], fontSize: 12),
-            ),
-            const SizedBox(height: 16),
-            FutureBuilder<Map<String, double>>(
-              future: service.getTodayExpenseByCategory(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const SizedBox(
-                    height: 200,
-                    child: Center(child: CircularProgressIndicator()),
-                  );
-                }
-                if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                  return const SizedBox(
-                    height: 80,
-                    child: Center(child: Text('No expenses today.')),
-                  );
-                }
-
-                final data = snapshot.data!;
-                final total = data.values.fold<double>(0.0, (a, b) => a + b);
-
-                final colors = <Color>[
-                  Colors.blue,
-                  Colors.green,
-                  Colors.orange,
-                  Colors.purple,
-                  Colors.red,
-                  Colors.teal,
-                  Colors.brown,
-                ];
-
-                final List<PieChartSectionData> sections = [];
-                var index = 0;
-                data.forEach((category, value) {
-                  final percent = (value / total * 100).toStringAsFixed(1);
-                  sections.add(
-                    PieChartSectionData(
-                      value: value,
-                      title: '$percent%',
-                      radius: 55,
-                      color: colors[index % colors.length],
-                      titleStyle: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 11,
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      "Today's Report",
+                      style: TextStyle(
+                        fontSize: 16,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                  );
-                  index++;
-                });
-
-                return Column(
-                  children: [
-                    SizedBox(
-                      height: 200,
-                      child: PieChart(
-                        PieChartData(
-                          sections: sections,
-                          sectionsSpace: 2,
-                          centerSpaceRadius: 40,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    // ছোট legend
-                    Wrap(
-                      alignment: WrapAlignment.center,
-                      spacing: 12,
-                      children: data.entries.map((e) {
-                        final i = data.keys.toList().indexOf(e.key);
-                        return Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Container(
-                              width: 10,
-                              height: 10,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: colors[i % colors.length],
-                              ),
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              '${e.key} (${e.value.toStringAsFixed(0)})',
-                              style: const TextStyle(fontSize: 11),
-                            ),
-                          ],
-                        );
-                      }).toList(),
-                    ),
+                    Text(dateText, style: const TextStyle(color: Colors.grey)),
                   ],
-                );
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
+                ),
+                IconButton(
+                  icon: const Icon(Icons.download),
+                  onPressed: () async {
+                    final data = await service.getIncomeExpenseInRange(
+                      range.start,
+                      range.end,
+                    );
 
-/// WEEK / MONTH / YEAR: income vs expense pie chart
-class _RangeIncomeExpenseCard extends StatelessWidget {
-  final String title;
-  final FirestoreService service;
-  final DateTime from;
-  final DateTime to;
+                    final img = await captureChart(chartKey);
 
-  const _RangeIncomeExpenseCard({
-    required this.title,
-    required this.service,
-    required this.from,
-    required this.to,
-  });
+                    final file = await generatePdfReport(
+                      title: 'Today Report',
+                      from: range.start,
+                      to: range.end,
+                      income: data['income'] ?? 0,
+                      expense: data['expense'] ?? 0,
+                      chartImage: img,
+                    );
 
-  @override
-  Widget build(BuildContext context) {
-    final rangeText =
-        '${DateFormat('d MMM').format(from)} – ${DateFormat('d MMM').format(to.subtract(const Duration(days: 1)))}';
-
-    return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      elevation: 2,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            Text(
-              title,
-              style: Theme.of(
-                context,
-              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              rangeText,
-              style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                    await sharePdf(file);
+                  },
+                ),
+              ],
             ),
             const SizedBox(height: 16),
+
             FutureBuilder<Map<String, double>>(
-              future: service.getIncomeExpenseInRange(from, to),
+              future: service.getIncomeExpenseInRange(range.start, range.end),
               builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const SizedBox(
-                    height: 200,
-                    child: Center(child: CircularProgressIndicator()),
-                  );
-                }
                 if (!snapshot.hasData) {
                   return const SizedBox(
-                    height: 80,
-                    child: Center(child: Text('No data.')),
+                    height: 200,
+                    child: Center(child: CircularProgressIndicator()),
                   );
                 }
 
-                final data = snapshot.data!;
-                final income = data['income'] ?? 0.0;
-                final expense = data['expense'] ?? 0.0;
+                final income = snapshot.data!['income'] ?? 0;
+                final expense = snapshot.data!['expense'] ?? 0;
 
                 if (income == 0 && expense == 0) {
-                  return const SizedBox(
-                    height: 80,
-                    child: Center(
-                      child: Text('No transactions in this range.'),
-                    ),
-                  );
+                  return const Text('No transactions today');
                 }
 
-                final List<PieChartSectionData> sections = [];
-                if (income > 0) {
-                  sections.add(
-                    PieChartSectionData(
-                      value: income,
-                      title: 'Income\n${income.toStringAsFixed(0)}',
-                      color: Colors.green,
-                      radius: 55,
-                      titleStyle: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
+                return RepaintBoundary(
+                  key: chartKey,
+                  child: SizedBox(
+                    height: 200,
+                    child: PieChart(
+                      PieChartData(
+                        centerSpaceRadius: 40,
+                        sections: [
+                          if (income > 0)
+                            PieChartSectionData(
+                              value: income,
+                              title: 'Income\n${income.toInt()}',
+                              color: Colors.green,
+                            ),
+                          if (expense > 0)
+                            PieChartSectionData(
+                              value: expense,
+                              title: 'Expense\n${expense.toInt()}',
+                              color: Colors.red,
+                            ),
+                        ],
                       ),
-                    ),
-                  );
-                }
-                if (expense > 0) {
-                  sections.add(
-                    PieChartSectionData(
-                      value: expense,
-                      title: 'Expense\n${expense.toStringAsFixed(0)}',
-                      color: Colors.red,
-                      radius: 55,
-                      titleStyle: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  );
-                }
-
-                return SizedBox(
-                  height: 200,
-                  child: PieChart(
-                    PieChartData(
-                      sections: sections,
-                      sectionsSpace: 2,
-                      centerSpaceRadius: 40,
                     ),
                   ),
                 );
@@ -332,3 +195,123 @@ class _RangeIncomeExpenseCard extends StatelessWidget {
 }
 
 
+/* ================= RANGE (WEEK / MONTH / YEAR) ================= */
+
+class _RangeCard extends StatelessWidget {
+  final String title;
+  final DateTimeRange range;
+  final FirestoreService service;
+
+  _RangeCard({required this.title, required this.range, required this.service});
+
+  final GlobalKey _chartKey = GlobalKey();
+
+  @override
+  Widget build(BuildContext context) {
+    return _card(
+      title: title,
+      subtitle:
+          '${DateFormat('d MMM').format(range.start)} - ${DateFormat('d MMM').format(range.end.subtract(const Duration(days: 1)))}',
+      trailing: IconButton(
+        icon: const Icon(Icons.download),
+        onPressed: () async {
+          final image = await captureChart(_chartKey);
+          final data = await service.getTransactionsInRange(
+            range.start,
+            range.end,
+          );
+
+          await generateAndSharePdf(
+            title: title,
+            from: range.start,
+            to: range.end,
+            rows: data,
+            chartImage: image,
+          );
+        },
+      ),
+      child: RepaintBoundary(
+        key: _chartKey,
+        child: FutureBuilder<Map<String, double>>(
+          future: service.getIncomeExpenseInRange(range.start, range.end),
+          builder: (_, s) {
+            if (!s.hasData) {
+              return const CircularProgressIndicator();
+            }
+
+            final inc = s.data!['income']!;
+            final exp = s.data!['expense']!;
+
+            if (inc == 0 && exp == 0) {
+              return const Text('No data');
+            }
+
+            return PieChart(
+              PieChartData(
+                centerSpaceRadius: 40,
+                sections: [
+                  if (inc > 0)
+                    PieChartSectionData(
+                      value: inc,
+                      title: 'Income\n${inc.toStringAsFixed(0)}',
+                      color: Colors.green,
+                    ),
+                  if (exp > 0)
+                    PieChartSectionData(
+                      value: exp,
+                      title: 'Expense\n${exp.toStringAsFixed(0)}',
+                      color: Colors.red,
+                    ),
+                ],
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+
+
+/* ================= COMMON CARD ================= */
+
+Widget _card({
+  required String title,
+  String? subtitle,
+  Widget? trailing,
+  required Widget child,
+}) {
+  return Card(
+    margin: const EdgeInsets.only(bottom: 16),
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+    child: Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  if (subtitle != null)
+                    Text(subtitle, style: const TextStyle(color: Colors.grey)),
+                ],
+              ),
+              if (trailing != null) trailing,
+            ],
+          ),
+          const SizedBox(height: 16),
+          SizedBox(height: 200, child: Center(child: child)),
+        ],
+      ),
+    ),
+  );
+}

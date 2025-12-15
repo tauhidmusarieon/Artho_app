@@ -265,81 +265,104 @@ class FirestoreService {
     );
   }
 
-    // --- NEW: given any date range, return total income & expense ---
-  Future<Map<String, double>> getIncomeExpenseInRange(
-    DateTime from,
-    DateTime to,
-  ) async {
-    if (_userId == null) return {'income': 0.0, 'expense': 0.0};
 
-    double income = 0.0;
-    double expense = 0.0;
-
-    try {
-      final snap = await _db
-          .collection('users')
-          .doc(_userId)
-          .collection('transactions')
-          .where('date', isGreaterThanOrEqualTo: from)
-          .where('date', isLessThan: to)
-          .get();
-
-      for (var d in snap.docs) {
-        final data = d.data();
-        final amount = (data['amount'] ?? 0).toDouble();
-        final type = (data['type'] as String?)?.toLowerCase();
-        final isExpense = type == 'expense' || (data['isExpense'] == true);
-
-        if (isExpense) {
-          expense += amount;
-        } else {
-          income += amount;
-        }
-      }
-
-      return {'income': income, 'expense': expense};
-    } catch (e) {
-      //print('Error getIncomeExpenseInRange: $e');
-      return {'income': 0.0, 'expense': 0.0};
-    }
-  }
-
-  // --- NEW: today's expenses grouped by category (for Today pie chart) ---
+  // ===== TODAY: category wise EXPENSE =====
   Future<Map<String, double>> getTodayExpenseByCategory() async {
     if (_userId == null) return {};
 
     final now = DateTime.now();
-    final startOfToday = DateTime(now.year, now.month, now.day);
-    final tomorrow = startOfToday.add(const Duration(days: 1));
+    final from = DateTime(now.year, now.month, now.day);
+    final to = from.add(const Duration(days: 1));
 
-    final Map<String, double> byCategory = {};
+    final snap = await _db
+        .collection('users')
+        .doc(_userId)
+        .collection('transactions')
+        .where('date', isGreaterThanOrEqualTo: from)
+        .where('date', isLessThan: to)
+        .get();
 
-    try {
-      final snap = await _db
-          .collection('users')
-          .doc(_userId)
-          .collection('transactions')
-          .where('date', isGreaterThanOrEqualTo: startOfToday)
-          .where('date', isLessThan: tomorrow)
-          .get();
+    final Map<String, double> result = {};
 
-      for (var d in snap.docs) {
-        final data = d.data();
-        final amount = (data['amount'] ?? 0).toDouble();
-        final type = (data['type'] as String?)?.toLowerCase();
-        final isExpense = type == 'expense' || (data['isExpense'] == true);
+    for (var d in snap.docs) {
+      final data = d.data();
+      final type =
+          (data['type'] as String?) ??
+          ((data['isExpense'] == true) ? 'expense' : 'income');
 
-        if (!isExpense) continue; 
+      if (type != 'expense') continue;
 
-        final cat = (data['category'] ?? 'Other') as String;
-        byCategory[cat] = (byCategory[cat] ?? 0) + amount;
-      }
-
-      return byCategory;
-    } catch (e) {
-      //print('Error getTodayExpenseByCategory: $e');
-      return {};
+      final cat = data['category'] ?? 'Other';
+      final amt = (data['amount'] ?? 0).toDouble();
+      result[cat] = (result[cat] ?? 0) + amt;
     }
+
+    return result;
   }
+
+
+  // ===== RANGE: income vs expense =====
+  Future<Map<String, double>> getIncomeExpenseInRange(
+    DateTime from,
+    DateTime to,
+  ) async {
+    if (_userId == null) return {'income': 0, 'expense': 0};
+
+    double income = 0;
+    double expense = 0;
+
+    final snap = await _db
+        .collection('users')
+        .doc(_userId)
+        .collection('transactions')
+        .where('date', isGreaterThanOrEqualTo: from)
+        .where('date', isLessThan: to)
+        .get();
+
+    for (var d in snap.docs) {
+      final data = d.data();
+      final amt = (data['amount'] ?? 0).toDouble();
+
+      final type =
+          (data['type'] as String?) ??
+          ((data['isExpense'] == true) ? 'expense' : 'income');
+
+      if (type == 'income') {
+        income += amt;
+      } else {
+        expense += amt;
+      }
+    }
+
+    return {'income': income, 'expense': expense};
+  }
+
+  Future<List<Map<String, dynamic>>> getTransactionsInRange(
+    DateTime from,
+    DateTime to,
+  ) async {
+    if (_userId == null) return [];
+
+    final snap = await _db
+        .collection('users')
+        .doc(_userId)
+        .collection('transactions')
+        .where('date', isGreaterThanOrEqualTo: from)
+        .where('date', isLessThan: to)
+        .orderBy('date')
+        .get();
+
+    return snap.docs.map((d) {
+      final data = d.data();
+      return {
+        'title': data['title'] ?? '',
+        'category': data['category'] ?? '',
+        'amount': (data['amount'] ?? 0).toDouble(),
+        'type': data['type'],
+        'date': (data['date'] as Timestamp).toDate(),
+      };
+    }).toList();
+  }
+
 
 }
