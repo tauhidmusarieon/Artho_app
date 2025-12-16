@@ -1,10 +1,12 @@
+import 'package:artho_app/models/transaction_model.dart';
 import 'package:artho_app/services/firestore_service.dart';
+import 'package:artho_app/utils/chart_to_image.dart';
+import 'package:artho_app/utils/pdf_report.dart';
+import 'package:artho_app/utils/save_pdf_to_downloads.dart';
+import 'package:artho_app/utils/share_pdf.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:artho_app/utils/chart_to_image.dart';
-import 'package:artho_app/utils/pdf_report.dart';
-
 
 class StatisticsScreen extends StatelessWidget {
   const StatisticsScreen({super.key});
@@ -15,10 +17,8 @@ class StatisticsScreen extends StatelessWidget {
   }
 
   DateTimeRange _todayRange() {
-    final now = DateTime.now();
-    final start = DateTime(now.year, now.month, now.day);
-    final end = start.add(const Duration(days: 1));
-    return DateTimeRange(start: start, end: end);
+    final start = _startOfToday();
+    return DateTimeRange(start: start, end: start.add(const Duration(days: 1)));
   }
 
   DateTimeRange _weekRange() {
@@ -55,10 +55,7 @@ class StatisticsScreen extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            _TodayIncomeExpenseCard(
-              service: service,
-              range: _todayRange(),
-            ),
+            _TodayIncomeExpenseCard(service: service),
             _RangeCard(
               title: 'This Week',
               range: _weekRange(),
@@ -81,18 +78,23 @@ class StatisticsScreen extends StatelessWidget {
   }
 }
 
-/* ================= TODAY CATEGORY ================= */
+/* ================= TODAY CARD ================= */
 
 class _TodayIncomeExpenseCard extends StatelessWidget {
   final FirestoreService service;
-  final DateTimeRange range;
+  _TodayIncomeExpenseCard({required this.service});
 
-  const _TodayIncomeExpenseCard({required this.service, required this.range});
+  final GlobalKey _chartKey = GlobalKey();
+
+  DateTimeRange _todayRange() {
+    final now = DateTime.now();
+    final start = DateTime(now.year, now.month, now.day);
+    return DateTimeRange(start: start, end: start.add(const Duration(days: 1)));
+  }
 
   @override
   Widget build(BuildContext context) {
-    final chartKey = GlobalKey();
-    final dateText = DateFormat('EEE, d MMM').format(range.start);
+    final range = _todayRange();
 
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
@@ -101,101 +103,119 @@ class _TodayIncomeExpenseCard extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      "Today's Report",
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    Text(dateText, style: const TextStyle(color: Colors.grey)),
-                  ],
-                ),
-                IconButton(
-                  icon: const Icon(Icons.download),
-                  onPressed: () async {
-                    final data = await service.getIncomeExpenseInRange(
-                      range.start,
-                      range.end,
-                    );
-
-                    final img = await captureChart(chartKey);
-
-                    final file = await generatePdfReport(
-                      title: 'Today Report',
-                      from: range.start,
-                      to: range.end,
-                      income: data['income'] ?? 0,
-                      expense: data['expense'] ?? 0,
-                      chartImage: img,
-                    );
-
-                    await sharePdf(file);
-                  },
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-
-            FutureBuilder<Map<String, double>>(
-              future: service.getIncomeExpenseInRange(range.start, range.end),
-              builder: (context, snapshot) {
-                if (!snapshot.hasData) {
-                  return const SizedBox(
-                    height: 200,
-                    child: Center(child: CircularProgressIndicator()),
-                  );
-                }
-
-                final income = snapshot.data!['income'] ?? 0;
-                final expense = snapshot.data!['expense'] ?? 0;
-
-                if (income == 0 && expense == 0) {
-                  return const Text('No transactions today');
-                }
-
-                return RepaintBoundary(
-                  key: chartKey,
-                  child: SizedBox(
-                    height: 200,
-                    child: PieChart(
-                      PieChartData(
-                        centerSpaceRadius: 40,
-                        sections: [
-                          if (income > 0)
-                            PieChartSectionData(
-                              value: income,
-                              title: 'Income\n${income.toInt()}',
-                              color: Colors.green,
-                            ),
-                          if (expense > 0)
-                            PieChartSectionData(
-                              value: expense,
-                              title: 'Expense\n${expense.toInt()}',
-                              color: Colors.red,
-                            ),
-                        ],
-                      ),
-                    ),
-                  ),
+            _header(
+              context,
+              title: "Today's Report",
+              date: range,
+              onDownload: () async {
+                await _downloadPdf(
+                  context: context,
+                  title: "Today's Report",
+                  range: range,
                 );
               },
             ),
+            const SizedBox(height: 16),
+            _chart(range),
           ],
         ),
       ),
     );
   }
+
+  Widget _chart(DateTimeRange range) {
+    return FutureBuilder<Map<String, double>>(
+      future: service.getIncomeExpenseInRange(range.start, range.end),
+      builder: (_, s) {
+        if (!s.hasData) {
+          return const SizedBox(
+            height: 200,
+            child: Center(child: CircularProgressIndicator()),
+          );
+        }
+
+        final income = s.data!['income'] ?? 0;
+        final expense = s.data!['expense'] ?? 0;
+
+        if (income == 0 && expense == 0) {
+          return const Text('No transactions today');
+        }
+
+        return RepaintBoundary(
+          key: _chartKey,
+          child: SizedBox(
+            height: 200,
+            child: PieChart(
+              PieChartData(
+                centerSpaceRadius: 40,
+                sections: [
+                  if (income > 0)
+                    PieChartSectionData(
+                      value: income,
+                      color: Colors.green,
+                      title: 'Income\n${income.toStringAsFixed(0)}',
+                    ),
+                  if (expense > 0)
+                    PieChartSectionData(
+                      value: expense,
+                      color: Colors.red,
+                      title: 'Expense\n${expense.toStringAsFixed(0)}',
+                    ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _downloadPdf({
+    required BuildContext context,
+    required String title,
+    required DateTimeRange range,
+  }) async {
+    // income / expense summary
+    final summary = await service.getIncomeExpenseInRange(
+      range.start,
+      range.end,
+    );
+
+    //raw transactions (Map list)
+    final rawTx = await service.getTransactionsInRange(range.start, range.end);
+
+    //CONVERT  TransactionModel list 
+    final List<TransactionModel> txList = rawTx
+        .map((e) => TransactionModel.fromMap(e['data'], e['id']))
+        .toList();
+
+    //chart image
+    final chartBytes = await captureChart(_chartKey);
+
+    //generate pdf
+    final pdf = await generatePdfReport(
+      title: title,
+      from: range.start,
+      to: range.end,
+      income: summary['income'] ?? 0,
+      expense: summary['expense'] ?? 0,
+      transactions: txList, //correct type now
+      chartImage: chartBytes,
+    );
+
+    //save + share
+    final saved = await savePdfToDownloads(pdf);
+    await sharePdf(saved);
+
+    if (context.mounted) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('PDF saved to Downloads')));
+    }
+  }
 }
 
-
-/* ================= RANGE (WEEK / MONTH / YEAR) ================= */
+/* ================= RANGE CARD ================= */
 
 class _RangeCard extends StatelessWidget {
   final String title;
@@ -208,110 +228,130 @@ class _RangeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _card(
-      title: title,
-      subtitle:
-          '${DateFormat('d MMM').format(range.start)} - ${DateFormat('d MMM').format(range.end.subtract(const Duration(days: 1)))}',
-      trailing: IconButton(
-        icon: const Icon(Icons.download),
-        onPressed: () async {
-          final image = await captureChart(_chartKey);
-          final data = await service.getTransactionsInRange(
-            range.start,
-            range.end,
-          );
-
-          await generateAndSharePdf(
-            title: title,
-            from: range.start,
-            to: range.end,
-            rows: data,
-            chartImage: image,
-          );
-        },
+    return Card(
+      margin: const EdgeInsets.only(bottom: 16),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            _header(
+              context,
+              title: title,
+              date: range,
+              onDownload: () async {
+                await _downloadPdf(context);
+              },
+            ),
+            const SizedBox(height: 16),
+            _chart(),
+          ],
+        ),
       ),
-      child: RepaintBoundary(
-        key: _chartKey,
-        child: FutureBuilder<Map<String, double>>(
-          future: service.getIncomeExpenseInRange(range.start, range.end),
-          builder: (_, s) {
-            if (!s.hasData) {
-              return const CircularProgressIndicator();
-            }
+    );
+  }
 
-            final inc = s.data!['income']!;
-            final exp = s.data!['expense']!;
+  Widget _chart() {
+    return RepaintBoundary(
+      key: _chartKey,
+      child: FutureBuilder<Map<String, double>>(
+        future: service.getIncomeExpenseInRange(range.start, range.end),
+        builder: (_, s) {
+          if (!s.hasData) return const CircularProgressIndicator();
 
-            if (inc == 0 && exp == 0) {
-              return const Text('No data');
-            }
+          final inc = s.data!['income'] ?? 0;
+          final exp = s.data!['expense'] ?? 0;
 
-            return PieChart(
+          if (inc == 0 && exp == 0) return const Text('No data');
+
+          return SizedBox(
+            height: 200,
+            child: PieChart(
               PieChartData(
                 centerSpaceRadius: 40,
                 sections: [
                   if (inc > 0)
                     PieChartSectionData(
                       value: inc,
-                      title: 'Income\n${inc.toStringAsFixed(0)}',
                       color: Colors.green,
+                      title: 'Income\n${inc.toStringAsFixed(0)}',
                     ),
                   if (exp > 0)
                     PieChartSectionData(
                       value: exp,
-                      title: 'Expense\n${exp.toStringAsFixed(0)}',
                       color: Colors.red,
+                      title: 'Expense\n${exp.toStringAsFixed(0)}',
                     ),
                 ],
               ),
-            );
-          },
-        ),
+            ),
+          );
+        },
       ),
     );
   }
+
+  Future<void> _downloadPdf(BuildContext context) async {
+    final summary = await service.getIncomeExpenseInRange(
+      range.start,
+      range.end,
+    );
+
+    final rawTx = await service.getTransactionsInRange(range.start, range.end);
+
+    final txList = rawTx
+        .map((e) => TransactionModel.fromMap(e['data'], e['id']))
+        .toList();
+
+
+    final chartBytes = await captureChart(_chartKey);
+
+    final pdf = await generatePdfReport(
+      title: title,
+      from: range.start,
+      to: range.end,
+      income: summary['income'] ?? 0,
+      expense: summary['expense'] ?? 0,
+      transactions: txList,
+      chartImage: chartBytes,
+    );
+
+    final saved = await savePdfToDownloads(pdf);
+    await sharePdf(saved);
+
+    if (context.mounted) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('PDF saved to Downloads')));
+    }
+  }
 }
 
+/* ================= HEADER WIDGET ================= */
 
-/* ================= COMMON CARD ================= */
-
-Widget _card({
+Widget _header(
+  BuildContext context, {
   required String title,
-  String? subtitle,
-  Widget? trailing,
-  required Widget child,
+  required DateTimeRange date,
+  required VoidCallback onDownload,
 }) {
-  return Card(
-    margin: const EdgeInsets.only(bottom: 16),
-    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-    child: Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
+  return Row(
+    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    children: [
+      Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  if (subtitle != null)
-                    Text(subtitle, style: const TextStyle(color: Colors.grey)),
-                ],
-              ),
-              if (trailing != null) trailing,
-            ],
+          Text(
+            title,
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
           ),
-          const SizedBox(height: 16),
-          SizedBox(height: 200, child: Center(child: child)),
+          Text(
+            '${DateFormat('d MMM').format(date.start)} - ${DateFormat('d MMM').format(date.end.subtract(const Duration(days: 1)))}',
+            style: const TextStyle(color: Colors.grey),
+          ),
         ],
       ),
-    ),
+      IconButton(icon: const Icon(Icons.download), onPressed: onDownload),
+    ],
   );
 }

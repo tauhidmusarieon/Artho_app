@@ -1,5 +1,7 @@
 import 'package:artho_app/models/transaction_model.dart';
+import 'package:artho_app/screens/notification_screen.dart';
 import 'package:artho_app/services/firestore_service.dart';
+import 'package:artho_app/utils/auto_monthly_report.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
@@ -44,6 +46,11 @@ class HomeScreenState extends State<HomeScreen> {
     super.initState();
     fetchDataAndUser(); // Loading all data
     _setCurrentDate();
+    final service = FirestoreService();
+    //auto genarate monthly report
+    if (DateTime.now().day == 1) {
+      generateAutoMonthlyReport(service);
+    }
   }
 
   void _setCurrentDate() {
@@ -165,9 +172,15 @@ class HomeScreenState extends State<HomeScreen> {
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.notifications_none, color: Colors.black),
-            onPressed: () {},
+            icon: const Icon(Icons.notifications),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const NotificationScreen()),
+              );
+            },
           ),
+
         ],
         backgroundColor: Colors.transparent,
         elevation: 0,

@@ -1,10 +1,11 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class TransactionModel {
-  final String id; // Firestore document ID
+  final String id;
   final String title;
   final double amount;
-  final String type; // 'income' or 'expense'
-  final String category; // e.g. Food, Salary, Mess
+  final String type;
+  final String category;
   final DateTime date;
 
   TransactionModel({
@@ -16,7 +17,6 @@ class TransactionModel {
     required this.date,
   });
 
-  // For saving to Firestore
   Map<String, dynamic> toMap() {
     return {
       'title': title,
@@ -25,5 +25,16 @@ class TransactionModel {
       'category': category,
       'date': date,
     };
+  }
+
+  factory TransactionModel.fromMap(Map<String, dynamic> data, String id) {
+    return TransactionModel(
+      id: id,
+      title: data['title'] ?? '',
+      amount: (data['amount'] ?? 0).toDouble(),
+      type: data['type'] ?? 'expense',
+      category: data['category'] ?? 'General',
+      date: (data['date'] as Timestamp).toDate(),
+    );
   }
 }

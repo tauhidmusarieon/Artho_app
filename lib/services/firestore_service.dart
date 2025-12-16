@@ -349,20 +349,11 @@ class FirestoreService {
         .collection('transactions')
         .where('date', isGreaterThanOrEqualTo: from)
         .where('date', isLessThan: to)
-        .orderBy('date')
         .get();
 
-    return snap.docs.map((d) {
-      final data = d.data();
-      return {
-        'title': data['title'] ?? '',
-        'category': data['category'] ?? '',
-        'amount': (data['amount'] ?? 0).toDouble(),
-        'type': data['type'],
-        'date': (data['date'] as Timestamp).toDate(),
-      };
-    }).toList();
+    return snap.docs.map((d) => {'id': d.id, 'data': d.data()}).toList();
   }
+
 
 
 }
