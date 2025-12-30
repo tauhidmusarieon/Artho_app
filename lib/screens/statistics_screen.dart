@@ -184,7 +184,7 @@ class _TodayIncomeExpenseCard extends StatelessWidget {
     //raw transactions (Map list)
     final rawTx = await service.getTransactionsInRange(range.start, range.end);
 
-    //CONVERT  TransactionModel list 
+    //CONVERT  TransactionModel list
     final List<TransactionModel> txList = rawTx
         .map((e) => TransactionModel.fromMap(e['data'], e['id']))
         .toList();
@@ -302,7 +302,6 @@ class _RangeCard extends StatelessWidget {
     final txList = rawTx
         .map((e) => TransactionModel.fromMap(e['data'], e['id']))
         .toList();
-
 
     final chartBytes = await captureChart(_chartKey);
 

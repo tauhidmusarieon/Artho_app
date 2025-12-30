@@ -122,9 +122,7 @@ class FirestoreService {
 
       return q.docs.fold<double>(
         0.0,
-        (sum, d) =>
-            sum +
-            ((d.data())['amount'] as num).toDouble(),
+        (sum, d) => sum + ((d.data())['amount'] as num).toDouble(),
       );
     } catch (e) {
       //print('Error calculating totalByTypeInRange: $e');
@@ -265,7 +263,6 @@ class FirestoreService {
     );
   }
 
-
   // ===== TODAY: category wise EXPENSE =====
   Future<Map<String, double>> getTodayExpenseByCategory() async {
     if (_userId == null) return {};
@@ -299,7 +296,6 @@ class FirestoreService {
 
     return result;
   }
-
 
   // ===== RANGE: income vs expense =====
   Future<Map<String, double>> getIncomeExpenseInRange(
@@ -354,6 +350,15 @@ class FirestoreService {
     return snap.docs.map((d) => {'id': d.id, 'data': d.data()}).toList();
   }
 
+  Future<void> updateUserData(Map<String, dynamic> newData) async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .update(newData);
+  }
 
 
 }

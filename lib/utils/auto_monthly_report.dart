@@ -17,15 +17,15 @@ Future<void> generateAutoMonthlyReport(FirestoreService service) async {
 
   if (income == 0 && expense == 0) return;
 
-  // 🔹 RAW TRANSACTIONS
+  // RAW TRANSACTIONS
   final rawTx = await service.getTransactionsInRange(from, to);
 
-  // 🔹 CONVERT → TransactionModel
+  // CONVERT → TransactionModel
   final transactions = rawTx
       .map((e) => TransactionModel.fromMap(e['data'], e['id']))
       .toList();
 
-  // 🔹 GENERATE PDF
+  // GENERATE PDF
   final pdf = await generatePdfReport(
     title: 'Monthly Report',
     from: from,
@@ -35,7 +35,7 @@ Future<void> generateAutoMonthlyReport(FirestoreService service) async {
     transactions: transactions,
   );
 
-  // 🔹 SHARE
+  // SHARE
   await Share.shareXFiles([
     XFile(pdf.path),
   ], text: 'Artho Monthly Expense Report');
