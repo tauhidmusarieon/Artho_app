@@ -6,6 +6,19 @@ import 'package:intl/intl.dart';
 class TransactionScreen extends StatelessWidget {
   const TransactionScreen({super.key});
 
+  // Move predefinedCategories to class level
+  static const List<String> _predefinedCategories = [
+    'Food & Groceries',
+    'Shopping',
+    'Transport',
+    'Bills & Utilities',
+    'Medical',
+    'Education',
+    'Entertainment',
+    'Rent',
+    'Other',
+  ];
+
   @override
   Widget build(BuildContext context) {
     final service = FirestoreService();
@@ -13,7 +26,7 @@ class TransactionScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('All Transactions')),
       body: StreamBuilder<List<TransactionModel>>(
-        stream: service.streamTransactions(), // all, ordered by date desc
+        stream: service.streamTransactions(),
         builder: (c, snap) {
           if (!snap.hasData) {
             return const Center(child: CircularProgressIndicator());
@@ -96,14 +109,13 @@ class TransactionScreen extends StatelessWidget {
                   ),
                   child: ListTile(
                     leading: CircleAvatar(
-                      backgroundColor: color.withValues(alpha: 0.1),
+                      backgroundColor: color.withAlpha(20),
                       child: Icon(icon, color: color, size: 20),
                     ),
                     title: Text(
                       m.title,
                       style: const TextStyle(fontWeight: FontWeight.w600),
                     ),
-                    // match Home: date (and category small)
                     subtitle: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -155,9 +167,21 @@ class TransactionScreen extends StatelessWidget {
   ) async {
     final titleCtrl = TextEditingController(text: m.title);
     final amountCtrl = TextEditingController(text: m.amount.toStringAsFixed(0));
-    final categoryCtrl = TextEditingController(text: m.category);
+
+    // Determine initial state
+    final bool isCustomCategory =
+        m.category == 'Other' || !_predefinedCategories.contains(m.category);
+
+    final categoryCtrl = TextEditingController(
+      text: isCustomCategory ? m.category : '',
+    );
+
     String type = m.type;
     DateTime date = m.date;
+
+    // Determine initial dropdown value
+    String dropdownValue = isCustomCategory ? 'Other' : m.category;
+    bool showCustomCategory = isCustomCategory;
 
     await showDialog(
       context: context,
@@ -166,21 +190,87 @@ class TransactionScreen extends StatelessWidget {
           title: const Text('Edit Transaction'),
           content: SingleChildScrollView(
             child: Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
                 TextField(
                   controller: titleCtrl,
                   decoration: const InputDecoration(labelText: 'Title'),
                 ),
+                const SizedBox(height: 12),
                 TextField(
                   controller: amountCtrl,
                   decoration: const InputDecoration(labelText: 'Amount'),
                   keyboardType: TextInputType.number,
                 ),
-                TextField(
-                  controller: categoryCtrl,
-                  decoration: const InputDecoration(labelText: 'Category'),
+                const SizedBox(height: 12),
+
+                // Category Section
+                const Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'Category',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.grey,
+                    ),
+                  ),
                 ),
                 const SizedBox(height: 8),
+
+                // Category Dropdown
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.grey.withOpacity(0.5)),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      value: dropdownValue,
+                      isExpanded: true,
+                      icon: const Icon(Icons.arrow_drop_down),
+                      items: _predefinedCategories.map((String category) {
+                        return DropdownMenuItem<String>(
+                          value: category,
+                          child: Text(category),
+                        );
+                      }).toList(),
+                      onChanged: (String? newValue) {
+                        if (newValue != null) {
+                          setState(() {
+                            dropdownValue = newValue;
+                            if (newValue == 'Other') {
+                              showCustomCategory = true;
+                            } else {
+                              showCustomCategory = false;
+                              categoryCtrl.clear();
+                            }
+                          });
+                        }
+                      },
+                    ),
+                  ),
+                ),
+
+                // Custom Category Field
+                if (showCustomCategory) ...[
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: categoryCtrl,
+                    decoration: InputDecoration(
+                      labelText: 'Custom Category',
+                      border: const OutlineInputBorder(),
+                      // Set hint text based on existing value
+                      hintText: isCustomCategory && m.category != 'Other'
+                          ? m.category
+                          : 'e.g. Investment, Gift, etc.',
+                    ),
+                  ),
+                ],
+
+                const SizedBox(height: 12),
                 Row(
                   children: [
                     ChoiceChip(
@@ -196,7 +286,7 @@ class TransactionScreen extends StatelessWidget {
                     ),
                   ],
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 12),
                 OutlinedButton(
                   onPressed: () async {
                     final d = await showDatePicker(
@@ -259,12 +349,28 @@ class TransactionScreen extends StatelessWidget {
             ),
             TextButton(
               onPressed: () async {
+                // Determine final category
+                String finalCategory;
+
+                if (dropdownValue == 'Other') {
+                  if (categoryCtrl.text.trim().isNotEmpty) {
+                    finalCategory = categoryCtrl.text.trim();
+                  } else if (isCustomCategory && m.category != 'Other') {
+                    // Keep existing custom category if no new input
+                    finalCategory = m.category;
+                  } else {
+                    finalCategory = 'Other';
+                  }
+                } else {
+                  finalCategory = dropdownValue;
+                }
+
                 final updated = TransactionModel(
                   id: m.id,
                   title: titleCtrl.text.trim(),
                   amount: double.tryParse(amountCtrl.text) ?? m.amount,
                   type: type,
-                  category: categoryCtrl.text.trim(),
+                  category: finalCategory,
                   date: date,
                 );
                 await service.updateTransaction(updated);
@@ -278,5 +384,3 @@ class TransactionScreen extends StatelessWidget {
     );
   }
 }
-
-

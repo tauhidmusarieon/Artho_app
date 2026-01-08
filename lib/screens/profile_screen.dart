@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
@@ -14,25 +13,12 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  bool darkMode = false;
   String? localImagePath; // <-- LOCAL IMAGE VARIABLE
 
   @override
   void initState() {
-    loadTheme();
     loadLocalImage(); // <-- load saved image on startup
     super.initState();
-  }
-
-  // Load theme state
-  Future<void> loadTheme() async {
-    final p = await SharedPreferences.getInstance();
-    setState(() => darkMode = p.getBool("darkMode") ?? false);
-  }
-
-  Future<void> saveTheme(bool v) async {
-    final p = await SharedPreferences.getInstance();
-    p.setBool("darkMode", v);
   }
 
   // Load saved profile image
@@ -164,9 +150,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     setState(() => localImagePath = pick.path);
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Profile Picture Updated.")),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text("Profile Picture Updated.")));
   }
 
   @override
@@ -250,15 +236,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
               tile(Icons.person, "Change Name", changeName),
               tile(Icons.email, "Change Email", changeEmail),
               tile(Icons.photo, "Change Profile Picture", changeProfilePic),
-
-              SwitchListTile(
-                value: darkMode,
-                onChanged: (v) {
-                  setState(() => darkMode = v);
-                  saveTheme(v);
-                },
-                title: const Text("Dark Mode", style: TextStyle(fontSize: 17)),
-              ),
 
               const SizedBox(height: 10),
               ElevatedButton(

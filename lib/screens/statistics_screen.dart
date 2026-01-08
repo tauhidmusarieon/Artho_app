@@ -116,6 +116,21 @@ class _TodayIncomeExpenseCard extends StatelessWidget {
               },
             ),
             const SizedBox(height: 16),
+            // Income and Expense summary
+            FutureBuilder<Map<String, double>>(
+              future: service.getIncomeExpenseInRange(range.start, range.end),
+              builder: (_, snapshot) {
+                if (!snapshot.hasData) {
+                  return const SizedBox();
+                }
+
+                final income = snapshot.data!['income'] ?? 0;
+                final expense = snapshot.data!['expense'] ?? 0;
+
+                return _IncomeExpenseSummary(income: income, expense: expense);
+              },
+            ),
+            const SizedBox(height: 16),
             _chart(range),
           ],
         ),
@@ -136,6 +151,7 @@ class _TodayIncomeExpenseCard extends StatelessWidget {
 
         final income = s.data!['income'] ?? 0;
         final expense = s.data!['expense'] ?? 0;
+        final total = income + expense;
 
         if (income == 0 && expense == 0) {
           return const Text('No transactions today');
@@ -153,13 +169,25 @@ class _TodayIncomeExpenseCard extends StatelessWidget {
                     PieChartSectionData(
                       value: income,
                       color: Colors.green,
-                      title: 'Income\n${income.toStringAsFixed(0)}',
+                      title: '${(income / total * 100).toStringAsFixed(0)}%',
+                      titleStyle: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                      radius: 60,
                     ),
                   if (expense > 0)
                     PieChartSectionData(
                       value: expense,
                       color: Colors.red,
-                      title: 'Expense\n${expense.toStringAsFixed(0)}',
+                      title: '${(expense / total * 100).toStringAsFixed(0)}%',
+                      titleStyle: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                      radius: 60,
                     ),
                 ],
               ),
@@ -244,6 +272,21 @@ class _RangeCard extends StatelessWidget {
               },
             ),
             const SizedBox(height: 16),
+            // Income and Expense summary
+            FutureBuilder<Map<String, double>>(
+              future: service.getIncomeExpenseInRange(range.start, range.end),
+              builder: (_, snapshot) {
+                if (!snapshot.hasData) {
+                  return const SizedBox();
+                }
+
+                final income = snapshot.data!['income'] ?? 0;
+                final expense = snapshot.data!['expense'] ?? 0;
+
+                return _IncomeExpenseSummary(income: income, expense: expense);
+              },
+            ),
+            const SizedBox(height: 16),
             _chart(),
           ],
         ),
@@ -261,6 +304,7 @@ class _RangeCard extends StatelessWidget {
 
           final inc = s.data!['income'] ?? 0;
           final exp = s.data!['expense'] ?? 0;
+          final total = inc + exp;
 
           if (inc == 0 && exp == 0) return const Text('No data');
 
@@ -274,13 +318,25 @@ class _RangeCard extends StatelessWidget {
                     PieChartSectionData(
                       value: inc,
                       color: Colors.green,
-                      title: 'Income\n${inc.toStringAsFixed(0)}',
+                      title: '${(inc / total * 100).toStringAsFixed(0)}%',
+                      titleStyle: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                      radius: 60,
                     ),
                   if (exp > 0)
                     PieChartSectionData(
                       value: exp,
                       color: Colors.red,
-                      title: 'Expense\n${exp.toStringAsFixed(0)}',
+                      title: '${(exp / total * 100).toStringAsFixed(0)}%',
+                      titleStyle: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                      radius: 60,
                     ),
                 ],
               ),
@@ -353,4 +409,57 @@ Widget _header(
       IconButton(icon: const Icon(Icons.download), onPressed: onDownload),
     ],
   );
+}
+
+/* ================= INCOME/EXPENSE SUMMARY WIDGET ================= */
+
+class _IncomeExpenseSummary extends StatelessWidget {
+  final double income;
+  final double expense;
+
+  const _IncomeExpenseSummary({required this.income, required this.expense});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceAround,
+      children: [
+        // Income Column
+        Column(
+          children: [
+            Text(
+              'Income',
+              style: TextStyle(
+                color: Colors.green[700],
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              '৳${income.toStringAsFixed(0)}', // Changed $ to ৳
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
+
+        // Expense Column
+        Column(
+          children: [
+            Text(
+              'Expense',
+              style: TextStyle(
+                color: Colors.red[700],
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              '৳${expense.toStringAsFixed(0)}', // Changed $ to ৳
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
 }
