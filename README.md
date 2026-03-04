@@ -154,16 +154,28 @@ flutterfire configure
 
 ---
 
-## 📸 Screenshots
+# 📸 Screenshots
+
+### Landing Page
+![Landing](assets/images/landingPage.png)
 
 ### Home Screen
 ![Home](assets/images/home.png)
 
+### Add Transaction
+![Transaction](assets/images/addTransaction.png)
+![Transactions](assets/images/transactions.png)
+
+### Statistics Screen
+![Statistics](assets/images/statistics1.png)
+![Statistics](assets/images/statistics2.png)
+
+### Report Download as PDF
+![Report](assets/images/report_export.png)
+![Report](assets/images/report_dn.png)
+
 ### Profile Screen
 ![Profile](assets/images/profile.png)
-
-### Transactions Screen
-![Transactions](assets/images/transactions.png)
 
 ---
 
