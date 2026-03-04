@@ -154,22 +154,16 @@ flutterfire configure
 
 ---
 
-# 📸 Screenshots
+## 📸 Screenshots
 
-Add screenshots here for better project presentation.
+### Home Screen
+![Home](assets/images/home.png)
 
-```
-screenshots/
-home.png
-profile.png
-transactions.png
-```
+### Profile Screen
+![Profile](assets/images/profile.png)
 
-Example:
-
-| Home Screen | Profile Screen |
-| ----------- | -------------- |
-| Screenshot  | Screenshot     |
+### Transactions Screen
+![Transactions](assets/images/transactions.png)
 
 ---
 
